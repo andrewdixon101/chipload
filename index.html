@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chip Load Calculator (Desktop)</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for the Inter font and overall look */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8f8f8; /* Light gray background */
+            display: flex;
+            justify-content: center;
+            align-items: flex-start; /* Align items to the start for scrolling */
+            min-height: 100vh;
+            margin: 0;
+            padding: 0; /* Remove body padding, container will handle spacing */
+            box-sizing: border-box; /* Include padding/border in element's total width */
+            overflow-y: auto; /* Enable vertical scrolling */
+        }
+        /* Main container for desktop */
+        .container {
+            max-width: 1024px; /* Wider max-width for desktop screens */
+            width: 100%; /* Ensure responsiveness on smaller desktop windows */
+            padding: 2.5rem; /* More generous padding for desktop */
+            margin: 20px auto; /* Center with top/bottom margin */
+        }
+
+        /* Input and button focus styles */
+        input:focus, button:focus, select:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(192, 38, 211, 0.5); /* Magenta glow on focus */
+        }
+        /* Table styling */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            font-size: 0.95rem; /* Slightly larger font size for desktop table content */
+        }
+        th, td {
+            border: 1px solid #cbd5e0; /* Light gray border */
+            padding: 12px; /* Standard padding for desktop table cells */
+            text-align: left;
+        }
+        th {
+            background-color: #e2e8f0; /* Light gray header background */
+            font-weight: bold;
+            color: #2d3748; /* Dark gray text */
+        }
+        tbody tr:nth-child(even) {
+            background-color: #f0f0f0; /* Very light gray for even rows */
+        }
+        tbody tr:hover {
+            background-color: #e0e0e0; /* Slightly darker gray on hover */
+        }
+        /* Disabled input field styling */
+        input:disabled {
+            background-color: #e5e7eb; /* Light gray for disabled inputs */
+            cursor: not-allowed;
+        }
+
+        /* Adjustments for inputs and labels */
+        label {
+            font-size: 0.9rem; /* Slightly larger label font for desktop */
+            margin-bottom: 0.5rem; /* More space below labels */
+        }
+        input, select {
+            padding: 0.75rem 1rem; /* Larger padding for input fields */
+            min-height: 52px; /* Adequate height for desktop inputs */
+            font-size: 1rem; /* Readable font size */
+        }
+        button {
+            padding: 0.8rem 1.5rem; /* Larger padding for buttons */
+            min-height: 52px; /* Adequate height for buttons */
+        }
+        h1 {
+            font-size: 2.5rem; /* Larger main heading */
+        }
+        h2 {
+            font-size: 1.75rem; /* Larger section headings */
+        }
+        #result {
+            font-size: 3.5rem; /* Larger result text */
+        }
+        #mainResultLabel {
+            font-size: 1.25rem; /* Larger result label */
+        }
+        #errorMessage {
+            font-size: 0.875rem; /* Standard error message font size */
+        }
+        ul.list-disc li {
+            font-size: 0.95rem; /* Larger list item font size */
+        }
+
+        /* Responsive adjustments for overall padding and font sizes (already generally handled by Tailwind, but fine-tuning here) */
+        @media (max-width: 768px) { /* Adjustments for tablets/smaller desktops */
+            .container {
+                padding: 1.5rem;
+            }
+            h1 { font-size: 2rem; }
+            h2 { font-size: 1.5rem; }
+            #result { font-size: 3rem; }
+            #mainResultLabel { font-size: 1.125rem; }
+            input, select, button { min-height: 48px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container bg-white p-8 rounded-xl shadow-lg border border-gray-200">
+        
+        <h1 class="text-3xl font-extrabold text-fuchsia-900 mb-6 text-center">Chip Load Calculator</h1>
+
+        <!-- Input fields for calculation -->
+        <div class="space-y-5 mb-8">
+            <div>
+                <label for="calculationType" class="block text-gray-800 text-sm font-semibold mb-2">What to Calculate?</label>
+                <select id="calculationType"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-fuchsia-600 focus:border-transparent transition duration-200 ease-in-out">
+                    <option value="chipLoad">Chip Load (Forward Calculation)</option>
+                    <option value="feedRate">Feed Rate (IPM/M/Min)</option>
+                    <option value="rpm">RPM</option>
+                    <option value="numFlutes">Number of Flutes</option> 
+                </select>
+            </div>
+            <div>
+                <label for="feedRateUnit" class="block text-gray-800 text-sm font-semibold mb-2">Feed Rate Unit:</label>
+                <select id="feedRateUnit"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-fuchsia-600 focus:border-transparent transition duration-200 ease-in-out">
+                    <option value="ipm">Inches per Minute (IPM)</option>
+                    <option value="m_min">Meters per Minute (M/Min)</option>
+                </select>
+            </div>
+            <div>
+                <label for="feedRate" class="block text-gray-800 text-sm font-semibold mb-2" id="feedRateLabel">Feed Rate (IPM):</label>
+                <input type="number" id="feedRate" placeholder="e.g., 30"
+                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-fuchsia-600 focus:border-transparent transition duration-200 ease-in-out">
+            </div>
+            <div>
+                <label for="rpm" class="block text-gray-800 text-sm font-semibold mb-2">RPM (Revolutions Per Minute):</label>
+                <input type="number" id="rpm" placeholder="e.g., 18000" value="18000"
+                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-fuchsia-600 focus:border-transparent transition duration-200 ease-in-out">
+            </div>
+            <div>
+                <label for="numFlutes" class="block text-gray-800 text-sm font-semibold mb-2">Number of Flutes:</label>
+                <input type="number" id="numFlutes" placeholder="e.g., 2" value="2"
+                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-fuchsia-600 focus:border-transparent transition duration-200 ease-in-out">
+            </div>
+            <div id="desiredChipLoadDiv" class="hidden">
+                <label for="desiredChipLoad" class="block text-gray-800 text-sm font-semibold mb-2">Desired Chip Load (IPT):</label>
+                <input type="number" id="desiredChipLoad" placeholder="e.g., 0.005"
+                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-fuchsia-600 focus:border-transparent transition duration-200 ease-in-out">
+            </div>
+        </div>
+
+        <!-- Calculate button -->
+        <button id="calculateBtn"
+                class="w-full bg-fuchsia-700 text-white font-bold py-3 px-6 rounded-lg hover:bg-fuchsia-800 focus:ring-2 focus:ring-fuchsia-600 focus:ring-offset-2 transition duration-300 ease-in-out transform hover:scale-105">
+            Calculate
+        </button>
+
+        <!-- Result display area -->
+        <div class="mt-8 p-6 bg-gray-100 rounded-xl border border-gray-300 text-center">
+            <h2 class="text-xl font-bold text-fuchsia-800 mb-3" id="mainResultLabel">Calculated Chip Load (IPT):</h2>
+            <p id="result" class="text-4xl font-extrabold text-fuchsia-700">0.0000</p>
+            <p id="errorMessage" class="text-red-600 mt-4 text-sm font-medium hidden"></p>
+        </div>
+
+        <!-- Target Chip Load Section -->
+        <div class="mt-10 p-6 bg-gray-50 rounded-xl shadow-md border border-gray-200">
+            <h2 class="text-2xl font-bold text-fuchsia-900 mb-4 text-center">Target Chip Load Reference</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-gray-800">
+                    <thead>
+                        <tr>
+                            <th class="px-4 py-2">Base Chip Load</th>
+                            <th class="px-4 py-2">Chip Load @ 2X Tool Diameter (20% Reduction)</th>
+                            <th class="px-4 py-2">Chip Load @ 3X Tool Diameter (40% Reduction)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td id="baseChipLoadVal" class="px-4 py-2">0.0000</td>
+                            <td id="chipLoad2XVal" class="px-4 py-2">0.0000</td>
+                            <td id="chipLoad3XVal" class="px-4 py-2">0.0000</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Material and Tool Recommendations Table -->
+        <div class="mt-10 p-6 bg-white rounded-xl shadow-md border border-gray-200">
+            <h2 class="text-2xl font-bold text-fuchsia-900 mb-4 text-center">Recommended Chip Load by Material & Tool</h2>
+            <div class="overflow-x-auto"> <!-- Allows horizontal scrolling on small screens -->
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Tool Diameter</th>
+                            <th>Hardwood</th>
+                            <th>Softwood/Plywood</th>
+                            <th>MDF/Particle Board</th>
+                            <th>Aluminum</th>
+                            <th>High Pressure Lam</th>
+                            <th>Solid Surface</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>1/8"</td>
+                            <td>.003″-.005″</td>
+                            <td>.004″-.006″</td>
+                            <td>.004″-.007″</td>
+                            <td>.003″-.004″</td>
+                            <td>.003″-.005″</td>
+                            <td>.002″-.004″</td>
+                        </tr>
+                        <tr>
+                            <td>1/4"</td>
+                            <td>.009″-.011″</td>
+                            <td>.011″-.013″</td>
+                            <td>.013″-.016″</td>
+                            <td>.005″-.007″</td>
+                            <td>.009″-.012″</td>
+                            <td>.006″-.009″</td>
+                        </tr>
+                        <tr>
+                            <td>3/8"</td>
+                            <td>.015″-.018″</td>
+                            <td>.018″-.020″</td>
+                            <td>.020″-.023″</td>
+                            <td>.006″-.008″</td>
+                            <td>.015″-.018″</td>
+                            <td>.008″-.010″</td>
+                        </tr>
+                        <tr>
+                            <td>1/2" & Up</td>
+                            <td>.019″-.021″</td>
+                            <td>.021″-.023″</td>
+                            <td>.025″-.027″</td>
+                            <td>.008″-.010″</td>
+                            <td>.023″-.025″</td>
+                            <td>.010″-.012″</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Extra Considerations Section -->
+        <div class="mt-10 p-6 bg-gray-50 rounded-xl shadow-md border border-gray-200">
+            <h2 class="text-2xl font-bold text-fuchsia-900 mb-4 text-center">Extra Considerations</h2>
+            <ul class="list-disc pl-5 text-gray-800 space-y-2">
+                <li><span class="font-semibold">Cut Depth 2X Tool Diameter:</span> Reduce chipload by 20-25% to account for increased cutting forces.</li>
+                <li><span class="font-semibold">Cut Depth 3X Tool Diameter:</span> Reduce chipload by 40-50% for even deeper cuts to maintain tool integrity and finish quality.</li>
+                <li>Consider the rigidity of your machine and fixturing. Less rigid setups may require a lower chip load.</li>
+                <li>Material hardness and abrasiveness can affect optimal chip load. Harder or more abrasive materials often require a lower chip load.</li>
+                <li>Tool material and coating play a significant role. High-performance coatings can allow for higher chip loads.</li>
+                <li>Listen to the machine. Abnormal noises can indicate too high or too low a chip load.</li>
+                <li>Always start with recommended values and adjust based on real-world results and tool wear.</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Get references to DOM elements
+        const calculationTypeSelect = document.getElementById('calculationType');
+        const feedRateUnitSelect = document.getElementById('feedRateUnit');
+        const feedRateInput = document.getElementById('feedRate');
+        const feedRateLabel = document.getElementById('feedRateLabel');
+        const rpmInput = document.getElementById('rpm');
+        const numFlutesInput = document.getElementById('numFlutes');
+        const desiredChipLoadInput = document.getElementById('desiredChipLoad');
+        const desiredChipLoadDiv = document.getElementById('desiredChipLoadDiv'); // The div containing desiredChipLoad input
+        const calculateBtn = document.getElementById('calculateBtn');
+        const resultDisplay = document.getElementById('result');
+        const mainResultLabel = document.getElementById('mainResultLabel');
+        const errorMessageDisplay = document.getElementById('errorMessage');
+
+        // References for the Target Chip Load table cells
+        const baseChipLoadVal = document.getElementById('baseChipLoadVal');
+        const chipLoad2XVal = document.getElementById('chipLoad2XVal');
+        const chipLoad3XVal = document.getElementById('chipLoad3XVal');
+
+        // Conversion factor from meters to inches
+        const METERS_TO_INCHES = 39.3701;
+
+        /**
+         * Calculates the chip load (inches per tooth).
+         * Formula: Chip Load = Feed Rate / (RPM * Number of Flutes)
+         * @param {number} feedRate - The feed rate in inches per minute (IPM).
+         * @param {number} rpm - The revolutions per minute.
+         * @param {number} numFlutes - The number of flutes on the cutting tool.
+         * @returns {number} The calculated chip load, or NaN if inputs are invalid.
+         */
+        function calculateChipLoad(feedRate, rpm, numFlutes) {
+            if (isNaN(feedRate) || isNaN(rpm) || isNaN(numFlutes) || rpm === 0 || numFlutes === 0) {
+                return NaN;
+            }
+            return feedRate / (rpm * numFlutes);
+        }
+
+        /**
+         * Updates the Target Chip Load Reference table based on a given chip load.
+         * @param {number} chipLoad - The base chip load to use for reference.
+         */
+        function updateTargetChipLoadReferences(chipLoad) {
+            if (isNaN(chipLoad) || chipLoad <= 0) {
+                baseChipLoadVal.textContent = '0.0000';
+                chipLoad2XVal.textContent = '0.0000';
+                chipLoad3XVal.textContent = '0.0000';
+                return;
+            }
+            // Based on user request: 20% reduction for 2X, 40% reduction for 3X
+            const chipLoad2X = chipLoad * 0.80; // 20% reduction
+            const chipLoad3X = chipLoad * 0.60; // 40% reduction
+
+            baseChipLoadVal.textContent = chipLoad.toFixed(4);
+            chipLoad2XVal.textContent = chipLoad2X.toFixed(4);
+            chipLoad3XVal.textContent = chipLoad3X.toFixed(4);
+        }
+
+        /**
+         * Displays an error message to the user and resets result displays.
+         * @param {string} message - The error message to display.
+         */
+        function displayError(message) {
+            errorMessageDisplay.textContent = message;
+            errorMessageDisplay.classList.remove('hidden');
+            resultDisplay.textContent = '0.0000'; // Reset main result
+            updateTargetChipLoadReferences(NaN); // Reset target references
+        }
+
+        /**
+         * Hides any existing error messages.
+         */
+        function hideError() {
+            errorMessageDisplay.classList.add('hidden');
+        }
+
+        /**
+         * Resets all input fields and result displays.
+         */
+        function resetInputsAndResults() {
+            feedRateInput.value = '';
+            rpmInput.value = '18000'; // Set default RPM
+            numFlutesInput.value = '2'; // Set default Number of Flutes
+            desiredChipLoadInput.value = '';
+            resultDisplay.textContent = '0.0000';
+            mainResultLabel.textContent = 'Calculated Chip Load (IPT):';
+            hideError();
+            updateTargetChipLoadReferences(NaN);
+        }
+
+        /**
+         * Manages the visibility and enabled state of input fields
+         * based on the selected calculation type.
+         */
+        function updateInputVisibility() {
+            const selectedType = calculationTypeSelect.value;
+            resetInputsAndResults(); // Clear everything when mode changes
+
+            // Enable all inputs by default, then disable as needed
+            feedRateInput.disabled = false;
+            rpmInput.disabled = false;
+            numFlutesInput.disabled = false;
+            desiredChipLoadDiv.classList.remove('hidden'); // Show desired chip load initially
+
+            if (selectedType === 'chipLoad') {
+                desiredChipLoadDiv.classList.add('hidden'); // Hide desired chip load
+                mainResultLabel.textContent = 'Calculated Chip Load (IPT):';
+                feedRateLabel.textContent = 'Feed Rate (IPM):'; // Reset label if it was M/Min
+                feedRateInput.placeholder = 'e.g., 30'; // Reset placeholder
+            } else if (selectedType === 'feedRate') {
+                feedRateInput.disabled = true; // Feed Rate becomes the output
+                mainResultLabel.textContent = 'Calculated Feed Rate:';
+            } else if (selectedType === 'rpm') {
+                rpmInput.disabled = true; // RPM becomes the output
+                mainResultLabel.textContent = 'Calculated RPM:';
+            } else if (selectedType === 'numFlutes') { 
+                numFlutesInput.disabled = true; // Number of Flutes becomes the output
+                mainResultLabel.textContent = 'Calculated Number of Flutes:';
+            }
+            
+            // Ensure feed rate unit label is correct based on its own dropdown
+            const currentFeedRateUnit = feedRateUnitSelect.value;
+            if (currentFeedRateUnit === 'ipm') {
+                feedRateLabel.textContent = 'Feed Rate (IPM):';
+                feedRateInput.placeholder = 'e.g., 30';
+            } else {
+                feedRateLabel.textContent = 'Feed Rate (M/Min):';
+                feedRateInput.placeholder = 'e.g., 0.762 (for 30 IPM)';
+            }
+        }
+
+        // Event listener for the main calculation type dropdown
+        calculationTypeSelect.addEventListener('change', updateInputVisibility);
+
+        // Event listener for the feed rate unit dropdown change
+        feedRateUnitSelect.addEventListener('change', () => {
+            const selectedUnit = feedRateUnitSelect.value;
+            if (selectedUnit === 'ipm') {
+                feedRateLabel.textContent = 'Feed Rate (IPM):';
+                feedRateInput.placeholder = 'e.g., 30';
+            } else {
+                feedRateLabel.textContent = 'Feed Rate (M/Min):';
+                feedRateInput.placeholder = 'e.g., 0.762 (for 30 IPM)';
+            }
+            hideError();
+        });
+
+        /**
+         * Event listener for the calculate button click.
+         * Handles both forward and reverse calculations.
+         */
+        calculateBtn.addEventListener('click', () => {
+            hideError();
+
+            const selectedCalculation = calculationTypeSelect.value;
+            let feedRate = parseFloat(feedRateInput.value);
+            const rpm = parseFloat(rpmInput.value);
+            const numFlutes = parseFloat(numFlutesInput.value);
+            const desiredChipLoad = parseFloat(desiredChipLoadInput.value);
+            const selectedUnit = feedRateUnitSelect.value;
+
+            let calculatedValue;
+            let baseChipLoadForReference; // This will hold the chip load used for the reference table
+
+            if (selectedCalculation === 'chipLoad') {
+                // Forward Calculation: Chip Load = Feed Rate / (RPM * Number of Flutes)
+                if (feedRate <= 0 || rpm <= 0 || numFlutes <= 0) {
+                    displayError("For Chip Load calculation, Feed Rate, RPM, and Number of Flutes must be positive.");
+                    return;
+                }
+                let effectiveFeedRate = feedRate;
+                if (selectedUnit === 'm_min') {
+                    effectiveFeedRate = feedRate * METERS_TO_INCHES;
+                }
+                calculatedValue = calculateChipLoad(effectiveFeedRate, rpm, numFlutes);
+                resultDisplay.textContent = isNaN(calculatedValue) ? 'Invalid' : calculatedValue.toFixed(4);
+                baseChipLoadForReference = calculatedValue;
+
+            } else if (selectedCalculation === 'feedRate') {
+                // Reverse Calculation: Feed Rate = Desired Chip Load * RPM * Number of Flutes
+                if (desiredChipLoad <= 0 || rpm <= 0 || numFlutes <= 0) {
+                    displayError("For Feed Rate calculation, Desired Chip Load, RPM, and Number of Flutes must be positive.");
+                    return;
+                }
+                calculatedValue = desiredChipLoad * rpm * numFlutes;
+                // Convert back to selected unit for display in input field
+                let displayFeedRate = calculatedValue;
+                if (selectedUnit === 'm_min') {
+                    displayFeedRate = calculatedValue / METERS_TO_INCHES;
+                }
+                feedRateInput.value = isNaN(displayFeedRate) ? '' : displayFeedRate.toFixed(2);
+                resultDisplay.textContent = `Calculated Feed Rate: ${isNaN(displayFeedRate) ? 'Invalid' : displayFeedRate.toFixed(2)} ${selectedUnit === 'ipm' ? 'IPM' : 'M/Min'}`;
+                baseChipLoadForReference = desiredChipLoad; // Use desiredChipLoad for reference
+
+            } else if (selectedCalculation === 'rpm') {
+                // Reverse Calculation: RPM = Feed Rate / (Desired Chip Load * Number of Flutes)
+                if (feedRate <= 0 || desiredChipLoad <= 0 || numFlutes <= 0) {
+                    displayError("For RPM calculation, Feed Rate, Desired Chip Load, and Number of Flutes must be positive.");
+                    return;
+                }
+                let effectiveFeedRate = feedRate;
+                if (selectedUnit === 'm_min') {
+                    effectiveFeedRate = feedRate * METERS_TO_INCHES;
+                }
+                calculatedValue = effectiveFeedRate / (desiredChipLoad * numFlutes);
+                rpmInput.value = isNaN(calculatedValue) ? '' : calculatedValue.toFixed(2);
+                resultDisplay.textContent = `Calculated RPM: ${isNaN(calculatedValue) ? 'Invalid' : calculatedValue.toFixed(2)}`;
+                baseChipLoadForReference = desiredChipLoad; // Use desiredChipLoad for reference
+
+            } else if (selectedCalculation === 'numFlutes') { 
+                // Reverse Calculation: Number of Flutes = Feed Rate / (Desired Chip Load * RPM)
+                if (feedRate <= 0 || desiredChipLoad <= 0 || rpm <= 0) {
+                    displayError("For Number of Flutes calculation, Feed Rate, Desired Chip Load, and RPM must be positive.");
+                    return;
+                }
+                let effectiveFeedRate = feedRate;
+                if (selectedUnit === 'm_min') {
+                    effectiveFeedRate = feedRate * METERS_TO_INCHES;
+                }
+                calculatedValue = effectiveFeedRate / (desiredChipLoad * rpm);
+                numFlutesInput.value = isNaN(calculatedValue) ? '' : Math.round(calculatedValue); // Round flutes to integer
+                resultDisplay.textContent = `Calculated Flutes: ${isNaN(calculatedValue) ? 'Invalid' : Math.round(calculatedValue)}`;
+                baseChipLoadForReference = desiredChipLoad; // Use desiredChipLoad for reference
+            }
+
+            // Update target chip load references if the calculation was successful
+            if (!isNaN(calculatedValue) && !isNaN(baseChipLoadForReference)) {
+                updateTargetChipLoadReferences(baseChipLoadForReference);
+            } else if (isNaN(calculatedValue)) {
+                 displayError("Calculation resulted in an invalid number. Check inputs.");
+            }
+        });
+
+        // Initialize UI on load
+        updateInputVisibility();
+    </script>
+</body>
+</html>
