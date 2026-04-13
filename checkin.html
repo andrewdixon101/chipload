@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Executive Leader Check-in | Zoho CRM</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8f8f8;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        .container {
+            max-width: 720px;
+            width: 100%;
+            padding: 2.5rem;
+            margin: 20px auto;
+        }
+        input:focus, button:focus, select:focus, textarea:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(192, 38, 211, 0.5);
+        }
+        .account-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            max-height: 240px;
+            overflow-y: auto;
+            background: white;
+            border: 1px solid #d1d5db;
+            border-top: none;
+            border-radius: 0 0 0.5rem 0.5rem;
+            z-index: 50;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+        }
+        .account-dropdown .account-option {
+            padding: 0.625rem 1rem;
+            cursor: pointer;
+            font-size: 0.95rem;
+        }
+        .account-dropdown .account-option:hover {
+            background-color: #f3e8ff;
+        }
+        .spinner {
+            border: 3px solid #e5e7eb;
+            border-top: 3px solid #a21caf;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 0.8s linear infinite;
+            display: inline-block;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .toast {
+            position: fixed;
+            top: 1.5rem;
+            right: 1.5rem;
+            padding: 1rem 1.5rem;
+            border-radius: 0.5rem;
+            color: white;
+            font-weight: 600;
+            z-index: 100;
+            transform: translateX(120%);
+            transition: transform 0.3s ease;
+        }
+        .toast.show {
+            transform: translateX(0);
+        }
+        .toast-success { background-color: #16a34a; }
+        .toast-error { background-color: #dc2626; }
+    </style>
+</head>
+<body>
+    <!-- Toast notification -->
+    <div id="toast" class="toast"></div>
+
+    <!-- ========== SETUP VIEW ========== -->
+    <div id="setupView" class="container bg-white p-8 rounded-xl shadow-lg border border-gray-200">
+        <h1 class="text-3xl font-extrabold text-fuchsia-900 mb-2 text-center">Executive Leader Check-in</h1>
+        <p class="text-gray-500 text-center mb-8">Connect to Zoho CRM to get started</p>
+
+        <div class="space-y-5">
+            <div>
+                <label for="dataCenter" class="block text-gray-800 text-sm font-semibold mb-2">Zoho Data Center</label>
+                <select id="dataCenter"
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg text-base">
+                    <option value="US">United States (.com)</option>
+                    <option value="EU">Europe (.eu)</option>
+                    <option value="IN">India (.in)</option>
+                    <option value="AU">Australia (.com.au)</option>
+                    <option value="JP">Japan (.jp)</option>
+                    <option value="CA">Canada (.ca)</option>
+                </select>
+            </div>
+            <div>
+                <label for="clientId" class="block text-gray-800 text-sm font-semibold mb-2">Client ID</label>
+                <input type="text" id="clientId" placeholder="Paste your Zoho Client ID"
+                       class="w-full px-4 py-3 border border-gray-300 rounded-lg text-base">
+            </div>
+            <div>
+                <label for="clientSecret" class="block text-gray-800 text-sm font-semibold mb-2">Client Secret</label>
+                <input type="password" id="clientSecret" placeholder="Paste your Zoho Client Secret"
+                       class="w-full px-4 py-3 border border-gray-300 rounded-lg text-base">
+            </div>
+
+            <button id="connectBtn" onclick="connectToZoho()"
+                    class="w-full bg-fuchsia-700 text-white font-bold py-3 px-6 rounded-lg hover:bg-fuchsia-800 transition duration-300 ease-in-out transform hover:scale-105 text-base">
+                Connect to Zoho CRM
+            </button>
+
+            <div id="setupError" class="text-red-600 text-sm font-medium hidden text-center"></div>
+        </div>
+
+        <!-- Setup Instructions -->
+        <div class="mt-8 p-5 bg-gray-50 rounded-xl border border-gray-200">
+            <h3 class="font-bold text-gray-800 mb-3">Setup Instructions</h3>
+            <ol class="list-decimal pl-5 text-gray-600 space-y-2 text-sm">
+                <li>Go to <strong>Zoho API Console</strong> (api-console.zoho.com)</li>
+                <li>Click <strong>"Add Client"</strong> and choose <strong>"Server-based Applications"</strong></li>
+                <li>Set the <strong>Authorized Redirect URI</strong> to:<br>
+                    <code id="redirectUriDisplay" class="bg-gray-200 px-2 py-1 rounded text-xs break-all"></code>
+                </li>
+                <li>Copy the <strong>Client ID</strong> and <strong>Client Secret</strong> into the fields above</li>
+                <li>Click <strong>"Connect to Zoho CRM"</strong> to authorize the app</li>
+            </ol>
+        </div>
+    </div>
+
+    <!-- ========== MAIN VIEW ========== -->
+    <div id="mainView" class="container bg-white p-8 rounded-xl shadow-lg border border-gray-200 hidden">
+        <div class="flex items-center justify-between mb-6">
+            <div>
+                <h1 class="text-3xl font-extrabold text-fuchsia-900">Executive Leader Check-in</h1>
+                <p class="text-gray-500 text-sm mt-1">Create a check-in note on a Zoho CRM account</p>
+            </div>
+            <button onclick="disconnect()"
+                    class="text-sm text-gray-500 hover:text-red-600 font-medium transition">
+                Disconnect
+            </button>
+        </div>
+
+        <div class="space-y-5">
+            <!-- User Name Dropdown -->
+            <div>
+                <label for="userName" class="block text-gray-800 text-sm font-semibold mb-2">Your Name</label>
+                <div class="relative">
+                    <select id="userName"
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg text-base appearance-none bg-white">
+                        <option value="">Loading users...</option>
+                    </select>
+                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
+                        <svg class="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Customer Name Dropdown (searchable) -->
+            <div>
+                <label class="block text-gray-800 text-sm font-semibold mb-2">Customer Name</label>
+                <div class="relative" id="accountSearchWrapper">
+                    <input type="text" id="accountSearch" placeholder="Type to search accounts..."
+                           autocomplete="off"
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg text-base">
+                    <input type="hidden" id="selectedAccountId">
+                    <input type="hidden" id="selectedAccountName">
+                    <div id="accountDropdown" class="account-dropdown hidden"></div>
+                    <div id="accountSpinner" class="absolute right-3 top-1/2 -translate-y-1/2 hidden">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+                <p id="selectedAccountLabel" class="text-xs text-fuchsia-700 font-medium mt-1 hidden"></p>
+            </div>
+
+            <!-- Note Section -->
+            <div>
+                <label for="noteContent" class="block text-gray-800 text-sm font-semibold mb-2">Check-in Notes</label>
+                <textarea id="noteContent" rows="6"
+                          placeholder="Enter your check-in notes here..."
+                          class="w-full px-4 py-3 border border-gray-300 rounded-lg text-base resize-y"></textarea>
+            </div>
+
+            <!-- Submit Button -->
+            <button id="submitBtn" onclick="submitCheckin()"
+                    class="w-full bg-fuchsia-700 text-white font-bold py-3 px-6 rounded-lg hover:bg-fuchsia-800 transition duration-300 ease-in-out transform hover:scale-105 text-base flex items-center justify-center gap-2">
+                <span id="submitBtnText">Submit Check-in</span>
+                <div id="submitSpinner" class="spinner hidden" style="border-top-color: white; border-color: rgba(255,255,255,0.3); border-top-color: white;"></div>
+            </button>
+
+            <div id="formError" class="text-red-600 text-sm font-medium hidden text-center"></div>
+        </div>
+
+        <!-- Recent Check-ins -->
+        <div id="recentSection" class="mt-8 p-5 bg-gray-50 rounded-xl border border-gray-200 hidden">
+            <h3 class="font-bold text-gray-800 mb-3">Recent Check-ins This Session</h3>
+            <ul id="recentList" class="space-y-2 text-sm text-gray-700"></ul>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // Zoho Data Center Configuration
+        // ==========================================
+        const DATA_CENTERS = {
+            US: { accounts: 'https://accounts.zoho.com',    api: 'https://www.zohoapis.com' },
+            EU: { accounts: 'https://accounts.zoho.eu',     api: 'https://www.zohoapis.eu' },
+            IN: { accounts: 'https://accounts.zoho.in',     api: 'https://www.zohoapis.in' },
+            AU: { accounts: 'https://accounts.zoho.com.au', api: 'https://www.zohoapis.com.au' },
+            JP: { accounts: 'https://accounts.zoho.jp',     api: 'https://www.zohoapis.jp' },
+            CA: { accounts: 'https://accounts.zohocloud.ca', api: 'https://www.zohoapis.ca' },
+        };
+
+        const SCOPES = 'ZohoCRM.modules.ALL,ZohoCRM.users.READ';
+        const STORAGE_KEY = 'zoho_checkin_config';
+
+        // ==========================================
+        // State
+        // ==========================================
+        let config = null;
+        let accessToken = null;
+        let tokenExpiry = 0;
+        let searchDebounceTimer = null;
+        let recentCheckins = [];
+
+        // ==========================================
+        // Initialization
+        // ==========================================
+        function init() {
+            // Display the redirect URI for setup instructions
+            document.getElementById('redirectUriDisplay').textContent = getRedirectUri();
+
+            // Load saved config
+            try {
+                config = JSON.parse(localStorage.getItem(STORAGE_KEY));
+            } catch (e) {
+                config = null;
+            }
+
+            // Check if returning from OAuth redirect
+            const urlParams = new URLSearchParams(window.location.search);
+            const code = urlParams.get('code');
+            const location = urlParams.get('location');
+
+            if (code) {
+                // Clear the URL params
+                window.history.replaceState({}, document.title, window.location.pathname);
+
+                if (config && config.clientId) {
+                    exchangeCodeForTokens(code);
+                } else {
+                    showSetup('OAuth redirect received but no saved config. Please set up again.');
+                }
+                return;
+            }
+
+            // Check if we have a valid config with refresh token
+            if (config && config.refreshToken) {
+                showMain();
+                refreshAccessToken().then(() => {
+                    loadUsers();
+                }).catch(err => {
+                    showSetup('Session expired. Please reconnect.');
+                });
+            } else {
+                showSetup();
+            }
+        }
+
+        function getRedirectUri() {
+            return window.location.origin + window.location.pathname;
+        }
+
+        // ==========================================
+        // View Management
+        // ==========================================
+        function showSetup(errorMsg) {
+            document.getElementById('setupView').classList.remove('hidden');
+            document.getElementById('mainView').classList.add('hidden');
+            if (errorMsg) {
+                const el = document.getElementById('setupError');
+                el.textContent = errorMsg;
+                el.classList.remove('hidden');
+            }
+            // Pre-fill saved values
+            if (config) {
+                document.getElementById('dataCenter').value = config.dataCenter || 'US';
+                document.getElementById('clientId').value = config.clientId || '';
+            }
+        }
+
+        function showMain() {
+            document.getElementById('setupView').classList.add('hidden');
+            document.getElementById('mainView').classList.remove('hidden');
+        }
+
+        // ==========================================
+        // OAuth Flow
+        // ==========================================
+        function connectToZoho() {
+            const dataCenter = document.getElementById('dataCenter').value;
+            const clientId = document.getElementById('clientId').value.trim();
+            const clientSecret = document.getElementById('clientSecret').value.trim();
+
+            if (!clientId || !clientSecret) {
+                const el = document.getElementById('setupError');
+                el.textContent = 'Please enter both Client ID and Client Secret.';
+                el.classList.remove('hidden');
+                return;
+            }
+
+            // Save config
+            config = { dataCenter, clientId, clientSecret };
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+
+            // Build authorization URL
+            const dc = DATA_CENTERS[dataCenter];
+            const redirectUri = encodeURIComponent(getRedirectUri());
+            const authUrl = `${dc.accounts}/oauth/v2/auth?scope=${SCOPES}&client_id=${clientId}&response_type=code&access_type=offline&redirect_uri=${redirectUri}&prompt=consent`;
+
+            window.location.href = authUrl;
+        }
+
+        async function exchangeCodeForTokens(code) {
+            showMain();
+            setUsersLoading();
+
+            const dc = DATA_CENTERS[config.dataCenter];
+            try {
+                const response = await fetch(`${dc.accounts}/oauth/v2/token`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({
+                        grant_type: 'authorization_code',
+                        client_id: config.clientId,
+                        client_secret: config.clientSecret,
+                        redirect_uri: getRedirectUri(),
+                        code: code
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+
+                accessToken = data.access_token;
+                tokenExpiry = Date.now() + ((data.expires_in || 3600) * 1000);
+
+                if (data.refresh_token) {
+                    config.refreshToken = data.refresh_token;
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+                }
+
+                await loadUsers();
+            } catch (err) {
+                console.error('Token exchange failed:', err);
+                showSetup('Failed to connect: ' + err.message + '. Please try again.');
+            }
+        }
+
+        async function refreshAccessToken() {
+            if (!config || !config.refreshToken) {
+                throw new Error('No refresh token');
+            }
+
+            const dc = DATA_CENTERS[config.dataCenter];
+            const response = await fetch(`${dc.accounts}/oauth/v2/token`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({
+                    grant_type: 'refresh_token',
+                    client_id: config.clientId,
+                    client_secret: config.clientSecret,
+                    refresh_token: config.refreshToken
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.error) {
+                throw new Error(data.error);
+            }
+
+            accessToken = data.access_token;
+            tokenExpiry = Date.now() + ((data.expires_in || 3600) * 1000);
+        }
+
+        async function ensureValidToken() {
+            // Refresh if token expires within 5 minutes
+            if (!accessToken || Date.now() > tokenExpiry - 300000) {
+                await refreshAccessToken();
+            }
+        }
+
+        // ==========================================
+        // API Calls
+        // ==========================================
+        async function zohoApiCall(path, options = {}) {
+            await ensureValidToken();
+
+            const dc = DATA_CENTERS[config.dataCenter];
+            const url = dc.api + path;
+
+            const response = await fetch(url, {
+                ...options,
+                headers: {
+                    'Authorization': `Zoho-oauthtoken ${accessToken}`,
+                    'Content-Type': 'application/json',
+                    ...(options.headers || {})
+                }
+            });
+
+            if (response.status === 401) {
+                // Token expired, try refreshing once
+                await refreshAccessToken();
+                const retryResponse = await fetch(url, {
+                    ...options,
+                    headers: {
+                        'Authorization': `Zoho-oauthtoken ${accessToken}`,
+                        'Content-Type': 'application/json',
+                        ...(options.headers || {})
+                    }
+                });
+                return retryResponse.json();
+            }
+
+            if (response.status === 204) {
+                return { data: [] };
+            }
+
+            return response.json();
+        }
+
+        // ==========================================
+        // Load Users
+        // ==========================================
+        function setUsersLoading() {
+            const select = document.getElementById('userName');
+            select.innerHTML = '<option value="">Loading users...</option>';
+            select.disabled = true;
+        }
+
+        async function loadUsers() {
+            const select = document.getElementById('userName');
+            try {
+                setUsersLoading();
+                const data = await zohoApiCall('/crm/v2/users?type=ActiveUsers&per_page=200');
+
+                select.innerHTML = '<option value="">-- Select your name --</option>';
+                if (data.users && data.users.length > 0) {
+                    // Sort users by full name
+                    data.users.sort((a, b) => (a.full_name || '').localeCompare(b.full_name || ''));
+                    data.users.forEach(user => {
+                        const option = document.createElement('option');
+                        option.value = user.id;
+                        option.textContent = user.full_name;
+                        option.dataset.name = user.full_name;
+                        select.appendChild(option);
+                    });
+                } else {
+                    select.innerHTML = '<option value="">No users found</option>';
+                }
+                select.disabled = false;
+            } catch (err) {
+                console.error('Failed to load users:', err);
+                select.innerHTML = '<option value="">Failed to load users</option>';
+                select.disabled = false;
+                showToast('Failed to load users: ' + err.message, 'error');
+            }
+        }
+
+        // ==========================================
+        // Account Search
+        // ==========================================
+        function setupAccountSearch() {
+            const input = document.getElementById('accountSearch');
+            const dropdown = document.getElementById('accountDropdown');
+
+            input.addEventListener('input', () => {
+                const query = input.value.trim();
+
+                // Clear selection when user types
+                document.getElementById('selectedAccountId').value = '';
+                document.getElementById('selectedAccountName').value = '';
+                document.getElementById('selectedAccountLabel').classList.add('hidden');
+
+                if (query.length < 2) {
+                    dropdown.classList.add('hidden');
+                    return;
+                }
+
+                clearTimeout(searchDebounceTimer);
+                searchDebounceTimer = setTimeout(() => searchAccounts(query), 350);
+            });
+
+            input.addEventListener('focus', () => {
+                if (input.value.trim().length >= 2 && dropdown.children.length > 0) {
+                    dropdown.classList.remove('hidden');
+                }
+            });
+
+            // Close dropdown when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!document.getElementById('accountSearchWrapper').contains(e.target)) {
+                    dropdown.classList.add('hidden');
+                }
+            });
+        }
+
+        async function searchAccounts(query) {
+            const dropdown = document.getElementById('accountDropdown');
+            const spinner = document.getElementById('accountSpinner');
+
+            spinner.classList.remove('hidden');
+
+            try {
+                const data = await zohoApiCall(
+                    `/crm/v2/Accounts/search?criteria=(Account_Name:starts_with:${encodeURIComponent(query)})&per_page=50&fields=Account_Name,id`
+                );
+
+                dropdown.innerHTML = '';
+
+                if (data.data && data.data.length > 0) {
+                    data.data.forEach(account => {
+                        const div = document.createElement('div');
+                        div.className = 'account-option';
+                        div.textContent = account.Account_Name;
+                        div.addEventListener('click', () => selectAccount(account.id, account.Account_Name));
+                        dropdown.appendChild(div);
+                    });
+                    dropdown.classList.remove('hidden');
+                } else {
+                    // Try broader search if starts_with returns nothing
+                    const broadData = await zohoApiCall(
+                        `/crm/v2/Accounts/search?word=${encodeURIComponent(query)}&per_page=50&fields=Account_Name,id`
+                    );
+
+                    if (broadData.data && broadData.data.length > 0) {
+                        broadData.data.forEach(account => {
+                            const div = document.createElement('div');
+                            div.className = 'account-option';
+                            div.textContent = account.Account_Name;
+                            div.addEventListener('click', () => selectAccount(account.id, account.Account_Name));
+                            dropdown.appendChild(div);
+                        });
+                        dropdown.classList.remove('hidden');
+                    } else {
+                        dropdown.innerHTML = '<div class="account-option text-gray-400">No accounts found</div>';
+                        dropdown.classList.remove('hidden');
+                    }
+                }
+            } catch (err) {
+                console.error('Account search failed:', err);
+                dropdown.innerHTML = '<div class="account-option text-red-500">Search failed</div>';
+                dropdown.classList.remove('hidden');
+            } finally {
+                spinner.classList.add('hidden');
+            }
+        }
+
+        function selectAccount(id, name) {
+            document.getElementById('accountSearch').value = name;
+            document.getElementById('selectedAccountId').value = id;
+            document.getElementById('selectedAccountName').value = name;
+            document.getElementById('accountDropdown').classList.add('hidden');
+
+            const label = document.getElementById('selectedAccountLabel');
+            label.textContent = 'Selected: ' + name;
+            label.classList.remove('hidden');
+        }
+
+        // ==========================================
+        // Submit Check-in
+        // ==========================================
+        async function submitCheckin() {
+            hideFormError();
+
+            const userSelect = document.getElementById('userName');
+            const userId = userSelect.value;
+            const userName = userSelect.selectedOptions[0]?.dataset?.name || '';
+            const accountId = document.getElementById('selectedAccountId').value;
+            const accountName = document.getElementById('selectedAccountName').value;
+            const noteContent = document.getElementById('noteContent').value.trim();
+
+            // Validation
+            if (!userId) {
+                showFormError('Please select your name.');
+                return;
+            }
+            if (!accountId) {
+                showFormError('Please search and select a customer account.');
+                return;
+            }
+            if (!noteContent) {
+                showFormError('Please enter check-in notes.');
+                return;
+            }
+
+            const noteTitle = `Executive leader Check-in by ${userName}`;
+
+            // Show loading state
+            const btn = document.getElementById('submitBtn');
+            const btnText = document.getElementById('submitBtnText');
+            const btnSpinner = document.getElementById('submitSpinner');
+            btn.disabled = true;
+            btnText.textContent = 'Submitting...';
+            btnSpinner.classList.remove('hidden');
+
+            try {
+                const result = await zohoApiCall('/crm/v2/Notes', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        data: [{
+                            Note_Title: noteTitle,
+                            Note_Content: noteContent,
+                            '$se_module': 'Accounts',
+                            Parent_Id: accountId
+                        }]
+                    })
+                });
+
+                if (result.data && result.data[0] && result.data[0].status === 'success') {
+                    showToast('Check-in note created successfully!', 'success');
+                    addRecentCheckin(userName, accountName, noteTitle);
+
+                    // Reset form (keep user selection)
+                    document.getElementById('accountSearch').value = '';
+                    document.getElementById('selectedAccountId').value = '';
+                    document.getElementById('selectedAccountName').value = '';
+                    document.getElementById('selectedAccountLabel').classList.add('hidden');
+                    document.getElementById('noteContent').value = '';
+                } else {
+                    const errorMsg = result.data?.[0]?.message || result.message || 'Unknown error';
+                    throw new Error(errorMsg);
+                }
+            } catch (err) {
+                console.error('Failed to create note:', err);
+                showToast('Failed to create note: ' + err.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btnText.textContent = 'Submit Check-in';
+                btnSpinner.classList.add('hidden');
+            }
+        }
+
+        // ==========================================
+        // Recent Check-ins
+        // ==========================================
+        function addRecentCheckin(userName, accountName, noteTitle) {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            recentCheckins.unshift({ userName, accountName, noteTitle, time: timeStr });
+
+            const section = document.getElementById('recentSection');
+            const list = document.getElementById('recentList');
+
+            section.classList.remove('hidden');
+            const li = document.createElement('li');
+            li.className = 'flex items-center justify-between bg-white p-3 rounded-lg border border-gray-200';
+            li.innerHTML = `
+                <div>
+                    <span class="font-semibold text-fuchsia-800">${escapeHtml(accountName)}</span>
+                    <span class="text-gray-400 mx-1">&mdash;</span>
+                    <span class="text-gray-600">${escapeHtml(noteTitle)}</span>
+                </div>
+                <span class="text-gray-400 text-xs ml-3 whitespace-nowrap">${timeStr}</span>
+            `;
+            list.prepend(li);
+        }
+
+        // ==========================================
+        // UI Helpers
+        // ==========================================
+        function showFormError(msg) {
+            const el = document.getElementById('formError');
+            el.textContent = msg;
+            el.classList.remove('hidden');
+        }
+
+        function hideFormError() {
+            document.getElementById('formError').classList.add('hidden');
+        }
+
+        function showToast(message, type) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast toast-${type} show`;
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 4000);
+        }
+
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        function disconnect() {
+            localStorage.removeItem(STORAGE_KEY);
+            config = null;
+            accessToken = null;
+            tokenExpiry = 0;
+            document.getElementById('clientId').value = '';
+            document.getElementById('clientSecret').value = '';
+            showSetup();
+        }
+
+        // ==========================================
+        // Boot
+        // ==========================================
+        setupAccountSearch();
+        init();
+    </script>
+</body>
+</html>
