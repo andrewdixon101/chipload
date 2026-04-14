@@ -1,0 +1,10 @@
+{
+  "name": "zoho_crm_proxy",
+  "version": "1.0.0",
+  "description": "Server-side proxy for Zoho CRM API calls",
+  "main": "index.js",
+  "dependencies": {
+    "express": "^4.21.0",
+    "zcatalyst-sdk-node": "^3.0.0"
+  }
+}

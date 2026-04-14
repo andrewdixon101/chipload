@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Executive Leader Check-in | Zoho CRM</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8f8f8;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-text-size-adjust: 100%;
+        }
+        .container {
+            max-width: 720px;
+            width: 100%;
+            padding: 2.5rem;
+            margin: 20px auto;
+        }
+        input, select, textarea, button {
+            font-size: 16px;
+        }
+        input:focus, button:focus, select:focus, textarea:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(192, 38, 211, 0.5);
+        }
+        .account-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            max-height: 240px;
+            overflow-y: auto;
+            background: white;
+            border: 1px solid #d1d5db;
+            border-top: none;
+            border-radius: 0 0 0.5rem 0.5rem;
+            z-index: 50;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+            -webkit-overflow-scrolling: touch;
+        }
+        .account-dropdown .account-option {
+            padding: 0.75rem 1rem;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+        .account-dropdown .account-option:hover,
+        .account-dropdown .account-option:active {
+            background-color: #f3e8ff;
+        }
+        .spinner {
+            border: 3px solid #e5e7eb;
+            border-top: 3px solid #a21caf;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 0.8s linear infinite;
+            display: inline-block;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .toast {
+            position: fixed;
+            top: 1rem;
+            left: 1rem;
+            right: 1rem;
+            padding: 0.875rem 1.25rem;
+            border-radius: 0.5rem;
+            color: white;
+            font-weight: 600;
+            z-index: 100;
+            text-align: center;
+            transform: translateY(-120%);
+            transition: transform 0.3s ease;
+        }
+        .toast.show { transform: translateY(0); }
+        .toast-success { background-color: #16a34a; }
+        .toast-error { background-color: #dc2626; }
+
+        @media (max-width: 640px) {
+            .container {
+                padding: 1.25rem;
+                margin: 0;
+                border-radius: 0;
+                border: none;
+                box-shadow: none;
+                min-height: 100vh;
+            }
+            body { background-color: #ffffff; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Toast -->
+    <div id="toast" class="toast"></div>
+
+    <!-- ========== LOADING STATE ========== -->
+    <div id="loadingView" class="container bg-white p-6 sm:p-8 rounded-xl shadow-lg border border-gray-200 text-center">
+        <h1 class="text-2xl sm:text-3xl font-extrabold text-fuchsia-900 mb-4">Executive Leader Check-in</h1>
+        <div class="spinner mx-auto mb-3" style="width:32px;height:32px;border-width:4px;"></div>
+        <p class="text-gray-500">Connecting to Zoho CRM...</p>
+    </div>
+
+    <!-- ========== ERROR STATE ========== -->
+    <div id="errorView" class="container bg-white p-6 sm:p-8 rounded-xl shadow-lg border border-gray-200 hidden">
+        <h1 class="text-2xl sm:text-3xl font-extrabold text-fuchsia-900 mb-4 text-center">Executive Leader Check-in</h1>
+        <div class="p-4 bg-red-50 border border-red-200 rounded-lg text-center">
+            <p class="text-red-700 font-semibold mb-2">Unable to connect to Zoho CRM</p>
+            <p id="errorDetail" class="text-red-600 text-sm"></p>
+        </div>
+        <button onclick="location.reload()"
+                class="mt-5 w-full bg-fuchsia-700 text-white font-bold py-3 px-6 rounded-lg hover:bg-fuchsia-800 active:bg-fuchsia-900 transition text-base">
+            Retry
+        </button>
+    </div>
+
+    <!-- ========== MAIN VIEW ========== -->
+    <div id="mainView" class="container bg-white p-6 sm:p-8 rounded-xl shadow-lg border border-gray-200 hidden">
+        <div class="mb-5 sm:mb-6">
+            <h1 class="text-xl sm:text-3xl font-extrabold text-fuchsia-900 leading-tight">Executive Leader Check-in</h1>
+            <p class="text-gray-500 text-xs sm:text-sm mt-1">Create a check-in note on a Zoho CRM account</p>
+        </div>
+
+        <div class="space-y-5">
+            <!-- User Name Dropdown -->
+            <div>
+                <label for="userName" class="block text-gray-800 text-sm font-semibold mb-2">Your Name</label>
+                <div class="relative">
+                    <select id="userName"
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg text-base appearance-none bg-white">
+                        <option value="">-- Select your name --</option>
+                    </select>
+                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
+                        <svg class="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Customer Name (searchable) -->
+            <div>
+                <label class="block text-gray-800 text-sm font-semibold mb-2">Customer Name</label>
+                <div class="relative" id="accountSearchWrapper">
+                    <input type="text" id="accountSearch" placeholder="Type to search accounts..."
+                           autocomplete="off"
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg text-base">
+                    <input type="hidden" id="selectedAccountId">
+                    <input type="hidden" id="selectedAccountName">
+                    <div id="accountDropdown" class="account-dropdown hidden"></div>
+                    <div id="accountSpinner" class="absolute right-3 top-1/2 -translate-y-1/2 hidden">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+                <p id="selectedAccountLabel" class="text-xs text-fuchsia-700 font-medium mt-1 hidden"></p>
+            </div>
+
+            <!-- Notes -->
+            <div>
+                <label for="noteContent" class="block text-gray-800 text-sm font-semibold mb-2">Check-in Notes</label>
+                <textarea id="noteContent" rows="4"
+                          placeholder="Enter your check-in notes here..."
+                          class="w-full px-4 py-3 border border-gray-300 rounded-lg text-base resize-y min-h-[120px]"></textarea>
+            </div>
+
+            <!-- Submit -->
+            <button id="submitBtn" onclick="submitCheckin()"
+                    class="w-full bg-fuchsia-700 text-white font-bold py-4 px-6 rounded-lg hover:bg-fuchsia-800 active:bg-fuchsia-900 transition duration-300 ease-in-out text-base flex items-center justify-center gap-2 min-h-[52px]">
+                <span id="submitBtnText">Submit Check-in</span>
+                <div id="submitSpinner" class="spinner hidden" style="border-color: rgba(255,255,255,0.3); border-top-color: white;"></div>
+            </button>
+
+            <div id="formError" class="text-red-600 text-sm font-medium hidden text-center"></div>
+        </div>
+
+        <!-- Recent Check-ins -->
+        <div id="recentSection" class="mt-6 sm:mt-8 p-4 sm:p-5 bg-gray-50 rounded-xl border border-gray-200 hidden">
+            <h3 class="font-bold text-gray-800 mb-3 text-sm sm:text-base">Recent Check-ins This Session</h3>
+            <ul id="recentList" class="space-y-2 text-sm text-gray-700"></ul>
+        </div>
+    </div>
+
+    <script>
+        // =====================================================
+        // All Zoho API calls go through the Catalyst function.
+        // No credentials or tokens live in the browser.
+        // =====================================================
+        const FUNCTION_BASE = '/server/zoho_crm_proxy';
+
+        let searchDebounceTimer = null;
+
+        // -------------------------------------------------
+        // Initialization
+        // -------------------------------------------------
+        async function init() {
+            try {
+                const res = await fetch(`${FUNCTION_BASE}/status`);
+                const status = await res.json();
+
+                if (!status.configured) {
+                    showError('Zoho CRM credentials are not configured. An administrator needs to update zoho-config.json and redeploy the Catalyst function.');
+                    return;
+                }
+
+                await loadUsers();
+                showMain();
+            } catch (err) {
+                console.error('Init failed:', err);
+                showError('Could not reach the server. Please check your connection and try again.');
+            }
+        }
+
+        // -------------------------------------------------
+        // View helpers
+        // -------------------------------------------------
+        function showMain() {
+            document.getElementById('loadingView').classList.add('hidden');
+            document.getElementById('errorView').classList.add('hidden');
+            document.getElementById('mainView').classList.remove('hidden');
+        }
+
+        function showError(msg) {
+            document.getElementById('loadingView').classList.add('hidden');
+            document.getElementById('mainView').classList.add('hidden');
+            document.getElementById('errorView').classList.remove('hidden');
+            document.getElementById('errorDetail').textContent = msg;
+        }
+
+        // -------------------------------------------------
+        // Load Users
+        // -------------------------------------------------
+        async function loadUsers() {
+            const select = document.getElementById('userName');
+            const res = await fetch(`${FUNCTION_BASE}/users`);
+            const data = await res.json();
+
+            if (!res.ok) throw new Error(data.error || 'Failed to load users');
+
+            select.innerHTML = '<option value="">-- Select your name --</option>';
+            if (data.users && data.users.length > 0) {
+                data.users
+                    .sort((a, b) => (a.full_name || '').localeCompare(b.full_name || ''))
+                    .forEach(user => {
+                        const opt = document.createElement('option');
+                        opt.value = user.id;
+                        opt.textContent = user.full_name;
+                        opt.dataset.name = user.full_name;
+                        select.appendChild(opt);
+                    });
+            }
+        }
+
+        // -------------------------------------------------
+        // Account Search
+        // -------------------------------------------------
+        function setupAccountSearch() {
+            const input = document.getElementById('accountSearch');
+            const dropdown = document.getElementById('accountDropdown');
+
+            input.addEventListener('input', () => {
+                const query = input.value.trim();
+                document.getElementById('selectedAccountId').value = '';
+                document.getElementById('selectedAccountName').value = '';
+                document.getElementById('selectedAccountLabel').classList.add('hidden');
+
+                if (query.length < 2) {
+                    dropdown.classList.add('hidden');
+                    return;
+                }
+                clearTimeout(searchDebounceTimer);
+                searchDebounceTimer = setTimeout(() => searchAccounts(query), 350);
+            });
+
+            input.addEventListener('focus', () => {
+                if (input.value.trim().length >= 2 && dropdown.children.length > 0) {
+                    dropdown.classList.remove('hidden');
+                }
+            });
+
+            document.addEventListener('click', (e) => {
+                if (!document.getElementById('accountSearchWrapper').contains(e.target)) {
+                    dropdown.classList.add('hidden');
+                }
+            });
+        }
+
+        async function searchAccounts(query) {
+            const dropdown = document.getElementById('accountDropdown');
+            const spinner = document.getElementById('accountSpinner');
+            spinner.classList.remove('hidden');
+
+            try {
+                const res = await fetch(`${FUNCTION_BASE}/accounts?q=${encodeURIComponent(query)}`);
+                const data = await res.json();
+                renderAccountResults(dropdown, data);
+            } catch (err) {
+                console.error('Account search failed:', err);
+                dropdown.innerHTML = '<div class="account-option text-red-500">Search failed</div>';
+                dropdown.classList.remove('hidden');
+            } finally {
+                spinner.classList.add('hidden');
+            }
+        }
+
+        function renderAccountResults(dropdown, data) {
+            dropdown.innerHTML = '';
+            if (data.data && data.data.length > 0) {
+                data.data.forEach(account => {
+                    const div = document.createElement('div');
+                    div.className = 'account-option';
+                    div.textContent = account.Account_Name;
+                    div.addEventListener('click', () => selectAccount(account.id, account.Account_Name));
+                    dropdown.appendChild(div);
+                });
+                dropdown.classList.remove('hidden');
+            } else {
+                dropdown.innerHTML = '<div class="account-option text-gray-400">No accounts found</div>';
+                dropdown.classList.remove('hidden');
+            }
+        }
+
+        function selectAccount(id, name) {
+            document.getElementById('accountSearch').value = name;
+            document.getElementById('selectedAccountId').value = id;
+            document.getElementById('selectedAccountName').value = name;
+            document.getElementById('accountDropdown').classList.add('hidden');
+            const label = document.getElementById('selectedAccountLabel');
+            label.textContent = 'Selected: ' + name;
+            label.classList.remove('hidden');
+        }
+
+        // -------------------------------------------------
+        // Submit Check-in
+        // -------------------------------------------------
+        async function submitCheckin() {
+            hideFormError();
+
+            const userSelect = document.getElementById('userName');
+            const userId = userSelect.value;
+            const userName = userSelect.selectedOptions[0]?.dataset?.name || '';
+            const accountId = document.getElementById('selectedAccountId').value;
+            const accountName = document.getElementById('selectedAccountName').value;
+            const noteContent = document.getElementById('noteContent').value.trim();
+
+            if (!userId) { showFormError('Please select your name.'); return; }
+            if (!accountId) { showFormError('Please search and select a customer account.'); return; }
+            if (!noteContent) { showFormError('Please enter check-in notes.'); return; }
+
+            const btn = document.getElementById('submitBtn');
+            const btnText = document.getElementById('submitBtnText');
+            const btnSpinner = document.getElementById('submitSpinner');
+            btn.disabled = true;
+            btnText.textContent = 'Submitting...';
+            btnSpinner.classList.remove('hidden');
+
+            try {
+                const res = await fetch(`${FUNCTION_BASE}/checkin`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ accountId, userName, noteContent }),
+                });
+                const result = await res.json();
+
+                if (res.ok && result.data && result.data[0] && result.data[0].status === 'success') {
+                    showToast('Check-in note created successfully!', 'success');
+                    addRecentCheckin(userName, accountName);
+                    document.getElementById('accountSearch').value = '';
+                    document.getElementById('selectedAccountId').value = '';
+                    document.getElementById('selectedAccountName').value = '';
+                    document.getElementById('selectedAccountLabel').classList.add('hidden');
+                    document.getElementById('noteContent').value = '';
+                } else {
+                    throw new Error(result.data?.[0]?.message || result.error || 'Unknown error');
+                }
+            } catch (err) {
+                console.error('Check-in failed:', err);
+                showToast('Failed: ' + err.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btnText.textContent = 'Submit Check-in';
+                btnSpinner.classList.add('hidden');
+            }
+        }
+
+        // -------------------------------------------------
+        // Recent Check-ins
+        // -------------------------------------------------
+        function addRecentCheckin(userName, accountName) {
+            const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const section = document.getElementById('recentSection');
+            const list = document.getElementById('recentList');
+            section.classList.remove('hidden');
+
+            const li = document.createElement('li');
+            li.className = 'bg-white p-3 rounded-lg border border-gray-200';
+            li.innerHTML = `
+                <div class="flex items-center justify-between gap-2">
+                    <span class="font-semibold text-fuchsia-800 truncate">${escapeHtml(accountName)}</span>
+                    <span class="text-gray-400 text-xs whitespace-nowrap shrink-0">${timeStr}</span>
+                </div>
+                <div class="text-gray-600 text-xs mt-1">Executive leader Check-in by ${escapeHtml(userName)}</div>
+            `;
+            list.prepend(li);
+        }
+
+        // -------------------------------------------------
+        // UI Helpers
+        // -------------------------------------------------
+        function showFormError(msg) {
+            const el = document.getElementById('formError');
+            el.textContent = msg;
+            el.classList.remove('hidden');
+        }
+        function hideFormError() {
+            document.getElementById('formError').classList.add('hidden');
+        }
+        function showToast(message, type) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast toast-${type} show`;
+            setTimeout(() => toast.classList.remove('show'), 4000);
+        }
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        // -------------------------------------------------
+        // Boot
+        // -------------------------------------------------
+        setupAccountSearch();
+        init();
+    </script>
+</body>
+</html>

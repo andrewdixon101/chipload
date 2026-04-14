@@ -1,0 +1,6 @@
+{
+  "dataCenter": "US",
+  "clientId": "YOUR_ZOHO_CLIENT_ID",
+  "clientSecret": "YOUR_ZOHO_CLIENT_SECRET",
+  "refreshToken": "YOUR_ZOHO_REFRESH_TOKEN"
+}

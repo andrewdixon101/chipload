@@ -1,0 +1,7 @@
+{
+  "deployment": {
+    "name": "zoho_crm_proxy",
+    "stack": "node18",
+    "type": "advancedio"
+  }
+}
