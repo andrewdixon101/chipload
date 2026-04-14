@@ -16,12 +16,16 @@
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            -webkit-text-size-adjust: 100%;
         }
         .container {
             max-width: 720px;
             width: 100%;
             padding: 2.5rem;
             margin: 20px auto;
+        }
+        input, select, textarea, button {
+            font-size: 16px; /* Prevents iOS zoom on focus */
         }
         input:focus, button:focus, select:focus, textarea:focus {
             outline: none;
@@ -40,13 +44,15 @@
             border-radius: 0 0 0.5rem 0.5rem;
             z-index: 50;
             box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+            -webkit-overflow-scrolling: touch;
         }
         .account-dropdown .account-option {
-            padding: 0.625rem 1rem;
+            padding: 0.75rem 1rem;
             cursor: pointer;
-            font-size: 0.95rem;
+            font-size: 1rem;
         }
-        .account-dropdown .account-option:hover {
+        .account-dropdown .account-option:hover,
+        .account-dropdown .account-option:active {
             background-color: #f3e8ff;
         }
         .spinner {
@@ -64,21 +70,38 @@
         }
         .toast {
             position: fixed;
-            top: 1.5rem;
-            right: 1.5rem;
-            padding: 1rem 1.5rem;
+            top: 1rem;
+            left: 1rem;
+            right: 1rem;
+            padding: 0.875rem 1.25rem;
             border-radius: 0.5rem;
             color: white;
             font-weight: 600;
             z-index: 100;
-            transform: translateX(120%);
+            text-align: center;
+            transform: translateY(-120%);
             transition: transform 0.3s ease;
         }
         .toast.show {
-            transform: translateX(0);
+            transform: translateY(0);
         }
         .toast-success { background-color: #16a34a; }
         .toast-error { background-color: #dc2626; }
+
+        /* Mobile adjustments */
+        @media (max-width: 640px) {
+            .container {
+                padding: 1.25rem;
+                margin: 0;
+                border-radius: 0;
+                border: none;
+                box-shadow: none;
+                min-height: 100vh;
+            }
+            body {
+                background-color: #ffffff;
+            }
+        }
     </style>
 </head>
 <body>
@@ -86,9 +109,9 @@
     <div id="toast" class="toast"></div>
 
     <!-- ========== SETUP VIEW ========== -->
-    <div id="setupView" class="container bg-white p-8 rounded-xl shadow-lg border border-gray-200">
-        <h1 class="text-3xl font-extrabold text-fuchsia-900 mb-2 text-center">Executive Leader Check-in</h1>
-        <p class="text-gray-500 text-center mb-8">Connect to Zoho CRM to get started</p>
+    <div id="setupView" class="container bg-white p-6 sm:p-8 rounded-xl shadow-lg border border-gray-200">
+        <h1 class="text-2xl sm:text-3xl font-extrabold text-fuchsia-900 mb-2 text-center">Executive Leader Check-in</h1>
+        <p class="text-gray-500 text-center mb-6 sm:mb-8 text-sm sm:text-base">Connect to Zoho CRM to get started</p>
 
         <div class="space-y-5">
             <div>
@@ -138,14 +161,14 @@
     </div>
 
     <!-- ========== MAIN VIEW ========== -->
-    <div id="mainView" class="container bg-white p-8 rounded-xl shadow-lg border border-gray-200 hidden">
-        <div class="flex items-center justify-between mb-6">
-            <div>
-                <h1 class="text-3xl font-extrabold text-fuchsia-900">Executive Leader Check-in</h1>
-                <p class="text-gray-500 text-sm mt-1">Create a check-in note on a Zoho CRM account</p>
+    <div id="mainView" class="container bg-white p-6 sm:p-8 rounded-xl shadow-lg border border-gray-200 hidden">
+        <div class="flex items-start justify-between mb-5 sm:mb-6 gap-3">
+            <div class="min-w-0">
+                <h1 class="text-xl sm:text-3xl font-extrabold text-fuchsia-900 leading-tight">Executive Leader Check-in</h1>
+                <p class="text-gray-500 text-xs sm:text-sm mt-1">Create a check-in note on a Zoho CRM account</p>
             </div>
             <button onclick="disconnect()"
-                    class="text-sm text-gray-500 hover:text-red-600 font-medium transition">
+                    class="text-xs sm:text-sm text-gray-500 hover:text-red-600 font-medium transition whitespace-nowrap shrink-0 pt-1">
                 Disconnect
             </button>
         </div>
@@ -187,14 +210,14 @@
             <!-- Note Section -->
             <div>
                 <label for="noteContent" class="block text-gray-800 text-sm font-semibold mb-2">Check-in Notes</label>
-                <textarea id="noteContent" rows="6"
+                <textarea id="noteContent" rows="4"
                           placeholder="Enter your check-in notes here..."
-                          class="w-full px-4 py-3 border border-gray-300 rounded-lg text-base resize-y"></textarea>
+                          class="w-full px-4 py-3 border border-gray-300 rounded-lg text-base resize-y min-h-[120px]"></textarea>
             </div>
 
             <!-- Submit Button -->
             <button id="submitBtn" onclick="submitCheckin()"
-                    class="w-full bg-fuchsia-700 text-white font-bold py-3 px-6 rounded-lg hover:bg-fuchsia-800 transition duration-300 ease-in-out transform hover:scale-105 text-base flex items-center justify-center gap-2">
+                    class="w-full bg-fuchsia-700 text-white font-bold py-4 px-6 rounded-lg hover:bg-fuchsia-800 active:bg-fuchsia-900 transition duration-300 ease-in-out text-base flex items-center justify-center gap-2 min-h-[52px]">
                 <span id="submitBtnText">Submit Check-in</span>
                 <div id="submitSpinner" class="spinner hidden" style="border-top-color: white; border-color: rgba(255,255,255,0.3); border-top-color: white;"></div>
             </button>
@@ -203,8 +226,8 @@
         </div>
 
         <!-- Recent Check-ins -->
-        <div id="recentSection" class="mt-8 p-5 bg-gray-50 rounded-xl border border-gray-200 hidden">
-            <h3 class="font-bold text-gray-800 mb-3">Recent Check-ins This Session</h3>
+        <div id="recentSection" class="mt-6 sm:mt-8 p-4 sm:p-5 bg-gray-50 rounded-xl border border-gray-200 hidden">
+            <h3 class="font-bold text-gray-800 mb-3 text-sm sm:text-base">Recent Check-ins This Session</h3>
             <ul id="recentList" class="space-y-2 text-sm text-gray-700"></ul>
         </div>
     </div>
@@ -673,14 +696,13 @@
 
             section.classList.remove('hidden');
             const li = document.createElement('li');
-            li.className = 'flex items-center justify-between bg-white p-3 rounded-lg border border-gray-200';
+            li.className = 'bg-white p-3 rounded-lg border border-gray-200';
             li.innerHTML = `
-                <div>
-                    <span class="font-semibold text-fuchsia-800">${escapeHtml(accountName)}</span>
-                    <span class="text-gray-400 mx-1">&mdash;</span>
-                    <span class="text-gray-600">${escapeHtml(noteTitle)}</span>
+                <div class="flex items-center justify-between gap-2">
+                    <span class="font-semibold text-fuchsia-800 truncate">${escapeHtml(accountName)}</span>
+                    <span class="text-gray-400 text-xs whitespace-nowrap shrink-0">${timeStr}</span>
                 </div>
-                <span class="text-gray-400 text-xs ml-3 whitespace-nowrap">${timeStr}</span>
+                <div class="text-gray-600 text-xs mt-1">${escapeHtml(noteTitle)}</div>
             `;
             list.prepend(li);
         }
