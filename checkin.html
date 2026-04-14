@@ -222,7 +222,7 @@
             CA: { accounts: 'https://accounts.zohocloud.ca', api: 'https://www.zohoapis.ca' },
         };
 
-        const SCOPES = 'ZohoCRM.modules.ALL,ZohoCRM.users.READ';
+        const SCOPES = 'ZohoCRM.modules.ALL,ZohoCRM.users.READ,ZohoCRM.coql.READ';
         const STORAGE_KEY = 'zoho_checkin_config';
 
         // ==========================================
@@ -527,47 +527,51 @@
             spinner.classList.remove('hidden');
 
             try {
-                const data = await zohoApiCall(
-                    `/crm/v2/Accounts/search?criteria=(Account_Name:starts_with:${encodeURIComponent(query)})&per_page=50&fields=Account_Name,id`
-                );
+                // Use COQL to query the database directly — this avoids the
+                // search-index lag of the /search endpoint and supports partial
+                // matching anywhere in the account name.
+                const safeQuery = query.replace(/'/g, "\\'");
+                const data = await zohoApiCall('/crm/v2/coql', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        select_query: `SELECT Account_Name, id FROM Accounts WHERE Account_Name like '%${safeQuery}%' ORDER BY Account_Name ASC LIMIT 200`
+                    })
+                });
 
-                dropdown.innerHTML = '';
-
-                if (data.data && data.data.length > 0) {
-                    data.data.forEach(account => {
-                        const div = document.createElement('div');
-                        div.className = 'account-option';
-                        div.textContent = account.Account_Name;
-                        div.addEventListener('click', () => selectAccount(account.id, account.Account_Name));
-                        dropdown.appendChild(div);
-                    });
-                    dropdown.classList.remove('hidden');
-                } else {
-                    // Try broader search if starts_with returns nothing
-                    const broadData = await zohoApiCall(
-                        `/crm/v2/Accounts/search?word=${encodeURIComponent(query)}&per_page=50&fields=Account_Name,id`
-                    );
-
-                    if (broadData.data && broadData.data.length > 0) {
-                        broadData.data.forEach(account => {
-                            const div = document.createElement('div');
-                            div.className = 'account-option';
-                            div.textContent = account.Account_Name;
-                            div.addEventListener('click', () => selectAccount(account.id, account.Account_Name));
-                            dropdown.appendChild(div);
-                        });
-                        dropdown.classList.remove('hidden');
-                    } else {
-                        dropdown.innerHTML = '<div class="account-option text-gray-400">No accounts found</div>';
-                        dropdown.classList.remove('hidden');
-                    }
-                }
+                renderAccountResults(dropdown, data);
             } catch (err) {
-                console.error('Account search failed:', err);
-                dropdown.innerHTML = '<div class="account-option text-red-500">Search failed</div>';
-                dropdown.classList.remove('hidden');
+                console.error('COQL search failed, falling back to search API:', err);
+                // Fallback to the search API if COQL is unavailable
+                try {
+                    const data = await zohoApiCall(
+                        `/crm/v2/Accounts/search?word=${encodeURIComponent(query)}&per_page=200&fields=Account_Name,id`
+                    );
+                    renderAccountResults(dropdown, data);
+                } catch (fallbackErr) {
+                    console.error('Fallback search also failed:', fallbackErr);
+                    dropdown.innerHTML = '<div class="account-option text-red-500">Search failed</div>';
+                    dropdown.classList.remove('hidden');
+                }
             } finally {
                 spinner.classList.add('hidden');
+            }
+        }
+
+        function renderAccountResults(dropdown, data) {
+            dropdown.innerHTML = '';
+
+            if (data.data && data.data.length > 0) {
+                data.data.forEach(account => {
+                    const div = document.createElement('div');
+                    div.className = 'account-option';
+                    div.textContent = account.Account_Name;
+                    div.addEventListener('click', () => selectAccount(account.id, account.Account_Name));
+                    dropdown.appendChild(div);
+                });
+                dropdown.classList.remove('hidden');
+            } else {
+                dropdown.innerHTML = '<div class="account-option text-gray-400">No accounts found</div>';
+                dropdown.classList.remove('hidden');
             }
         }
 
